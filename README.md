@@ -1,4 +1,5 @@
-# QuasarFactorAnalysis
+# Quasar Factor Analysis
 
-An unsupervised learning approach for quasar continuum fitting.
+Hi, this is the source code for [*An Unsupervised Learning Approach for Quasar Continuum Prediction*.](https://arxiv.org/pdf/2207.02788)
+
 
