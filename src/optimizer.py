@@ -1,9 +1,16 @@
+"""
+QuasarFactorAnalysis/utils.py - optimizers
+Copyright 2022: Zechang Sun [https://zechangsun.github.io]
+Email: szc22@mails.tsinghua.edu.cn
+Reference: An Unsupervised Learning Approach for Quasar Continuum Prediction [https://arxiv.org/abs/2207.02788]
+"""
 import torch
+from typing import Callable, Dict
 
 
 class Adam(object):
 
-    def __init__(self, params, device, scheduler=None, learning_rate=1e-2, b1=0.9, b2=0.999, eps=1e-8, weight_decay=1e-3):
+    def __init__(self, params: Dict[str, torch.Tensor], device: torch.divce, scheduler=Callable[[float, int], Callable[[int, float], float]], learning_rate: float=1e-2, b1: float=0.9, b2: float=0.999, eps: float=1e-8, weight_decay: float=1e-3) -> None:
         """Adam optimizer
 
         Args:
@@ -69,12 +76,24 @@ class Adam(object):
             return self.learning_rate
 
 
-def step_scheduler(alpha, step):
-    """step scheduler, update rule: lr = lr_0 * alpha**((1+i)/step)
+def step_scheduler(alpha: float, step: int) -> Callable[[int, float], float]:
+    """
+    step scheduler, update rule: lr = lr_0 * alpha**((1+i)/step)
+    
     Args:
         alpha (float): decay parameter
         step (int): decay after step
+    
+    return:
+        scheduler (callable): scheduler function in training
     """
     def scheduler(i, lr):
+        """
+        scheduler function
+
+        Args:
+            i (int): current iteration
+            lr (float): learning rate
+        """
         return lr*alpha**((i+1)//step)
     return scheduler
