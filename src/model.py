@@ -18,7 +18,7 @@ from torch.nn import functional as F
 log2pi = 1.8378770664093453
 
 
-class QuasarFactorModel(object):
+class QFA(object):
 
     def __init__(self, Nb: int, Nr: int, Nh: int,  device: torch.device, tau: Callable[[torch.Tensor, ], torch.Tensor]=tau, model_params:Dict[str, np.ndarray]=None) -> None:
         """
@@ -68,13 +68,13 @@ class QuasarFactorModel(object):
         self.c0 = torch.tensor(0.3, dtype=torch.float32).to(self.device)
         self.beta = torch.tensor(2., dtype=torch.float32).to(self.device)
 
-    def forward(self, delta: torch.Tensor, error: torch.Tensor, redshift: torch.Tensor, mask: torch.Tensor):
+    def forward(self, delta: torch.Tensor, error: torch.Tensor, zabs: torch.Tensor, mask: torch.Tensor):
         """Compute batch loss and gradient
 
         Args:
             delta (torch.tensor((batch_size, Npix), dtype=torch.float32)): delta fields for quasar spectra, mathemmatically, \delta = S - A@\mu
             error (torch.tensor((batch_size, Npix), dtype=torch.float32)): error vector for quasar spectra
-            redshift (torch.tensor((batch_size, Nb), dtype=torch.float32)): redshift array for Ly$\alpha$ absorption systems
+            zabs (torch.tensor((batch_size, Nb), dtype=torch.float32)): zabs array for Ly$\alpha$ absorption systems
             mask (torch.tensor((batch_size, Npix), dtype=torch.float32)): mask array which indicates the available part of the spectra
 
         Returns:
@@ -92,7 +92,7 @@ class QuasarFactorModel(object):
             "beta": torch.zeros_like(self.beta, dtype=torch.float32).to(self.device)
         }
         non_zero_values = {key: torch.zeros_like(gradient[key], dtype=torch.float32).to(self.device) for key in gradient}
-        for d, e, r, m in zip(delta, error, redshift, mask):
+        for d, e, r, m in zip(delta, error, zabs, mask):
             single_loss, single_gradient = self.loglikelihood_and_gradient_for_single_spectra(d, e, r, m)
             loss += single_loss/batch_size
             for key in gradient:
@@ -101,14 +101,14 @@ class QuasarFactorModel(object):
         gradient = {key: gradient[key]/non_zero_values[key] for key in gradient}
         return loss, gradient
 
-    def loglikelihood_and_gradient_for_single_spectra(self, delta: torch.Tensor, error: torch.Tensor, redshift: torch.Tensor, mask: torch.Tensor):
+    def loglikelihood_and_gradient_for_single_spectra(self, delta: torch.Tensor, error: torch.Tensor, zabs: torch.Tensor, mask: torch.Tensor):
         """
         Compute the nagetive loglikelihood and the gradient for a single spectra
 
         Args:
             delta (torch.tensor((Npix, ), dtype=torch.float32)): delta fields for quasar spectra, mathemmatically, \delta = S - A@\mu
             error (torch.tensor((Npix, ), dtype=torch.float32)): error vector for quasar spectra
-            redshift (torch.tensor((Nb, ), dtype=torch.float32)): redshift array for Ly$\alpha$ absorption systems
+            zabs (torch.tensor((Nb, ), dtype=torch.float32)): zabs array for Ly$\alpha$ absorption systems
             mask (torch.tensor((Npix, ), dtype=torch.float32)): mask array which indicates the available part of the spectra
 
         Returns:
@@ -118,12 +118,12 @@ class QuasarFactorModel(object):
         blue_mask, red_mask = mask[:self.Nb], mask[self.Nb:]
         Nb, Nr = torch.sum(blue_mask), torch.sum(red_mask)
         Npix = Nb + Nr
-        masked_delta, masked_error, masked_redshift = delta[mask], error[mask], redshift[blue_mask]
-        A = torch.hstack((torch.exp(-1.*self.tau(masked_redshift)), torch.ones(Nr, dtype=torch.float32).to(self.device)))
+        masked_delta, masked_error, masked_zabs = delta[mask], error[mask], zabs[blue_mask]
+        A = torch.hstack((torch.exp(-1.*self.tau(masked_zabs)), torch.ones(Nr, dtype=torch.float32).to(self.device)))
         diagA = torch.diag(A)
         F = diagA@self.F[mask, :]
         Psi = A*self.Psi[mask]*A
-        zdep = omega_func(masked_redshift, self.tau0, self.beta, self.c0)
+        zdep = omega_func(masked_zabs, self.tau0, self.beta, self.c0)
         omega = torch.hstack((self.omega[blue_mask]*zdep, torch.zeros(Nr, dtype=torch.float32).to(self.device)))
         diag = Psi + omega + masked_error*masked_error
         invSigma = MatrixInverse(F, diag, self.device)
@@ -135,9 +135,9 @@ class QuasarFactorModel(object):
         diagPartialSigma = torch.diag(partialSigma)
         partialPsi = A*diagPartialSigma*A
         partialOmega = diagPartialSigma[:Nb]*zdep
-        root = 1. - tauHI(masked_redshift, self.tau0, self.beta) - self.c0
-        partialTau0 = -1.*torch.sum(diagPartialSigma[:Nb]*omega[:Nb]*zdep*2.*root*(torch.pow(1.+masked_redshift, self.beta)))
-        partialBeta = -1.*torch.sum(diagPartialSigma[:Nb]*omega[:Nb]*zdep*2.*root*(self.tau0*torch.pow((1+masked_redshift), self.beta)*torch.log((1+masked_redshift))))
+        root = 1. - tauHI(masked_zabs, self.tau0, self.beta) - self.c0
+        partialTau0 = -1.*torch.sum(diagPartialSigma[:Nb]*omega[:Nb]*zdep*2.*root*(torch.pow(1.+masked_zabs, self.beta)))
+        partialBeta = -1.*torch.sum(diagPartialSigma[:Nb]*omega[:Nb]*zdep*2.*root*(self.tau0*torch.pow((1+masked_zabs), self.beta)*torch.log((1+masked_zabs))))
         partialC0 = -1.*torch.sum(diagPartialSigma[:Nb]*omega[:Nb]*zdep*2.*root)
         gradientF = torch.zeros((self.Npix, self.Nh), dtype=torch.float32).to(self.device)
         gradientF[mask, :] = partialF
@@ -154,17 +154,17 @@ class QuasarFactorModel(object):
             "beta": partialBeta
         }
 
-    def prediction_for_single_spectra(self, flux: torch.Tensor, error: torch.Tensor, redshift: torch.Tensor, mask: torch.Tensor):
+    def prediction_for_single_spectra(self, flux: torch.Tensor, error: torch.Tensor, zabs: torch.Tensor, mask: torch.Tensor):
         blue_mask, red_mask = mask[:self.Nb], mask[self.Nb:]
         Nb, Nr = torch.sum(blue_mask), torch.sum(red_mask)
         Npix = Nb + Nr
-        masked_flux, masked_error, masked_redshift = flux[mask], error[mask], redshift[blue_mask]
-        A = torch.hstack((torch.exp(-1.*self.tau(masked_redshift)), torch.ones(Nr, dtype=torch.float32).to(self.device)))
+        masked_flux, masked_error, masked_zabs = flux[mask], error[mask], zabs[blue_mask]
+        A = torch.hstack((torch.exp(-1.*self.tau(masked_zabs)), torch.ones(Nr, dtype=torch.float32).to(self.device)))
         masked_delta = masked_flux - self.mu[mask]*A
         diagA = torch.diag(A)
         F = diagA@self.F[mask, :]
         Psi = A*self.Psi[mask]*A
-        zdep = omega_func(masked_redshift, self.tau0, self.beta, self.c0)
+        zdep = omega_func(masked_zabs, self.tau0, self.beta, self.c0)
         omega = torch.hstack((self.omega[blue_mask]*zdep, torch.zeros(Nr, dtype=torch.float32).to(self.device)))
         diag = Psi + omega + masked_error*masked_error
         invSigma = MatrixInverse(F, diag, self.device)
@@ -212,14 +212,12 @@ class QuasarFactorModel(object):
             if logger is not None:
                 logger.info("epoch: {:03d}/{:03d}  ;  loss:  {:.2f}  ;  time:  {:.2f} s ".format(i, n_epochs, total_loss, end_time-start_time))
             return total_loss
-        loss_ = 9999.
         for epoch in range(n_epochs):
             loss = step(epoch)
             if loss < 0.:
                 self.smooth()
                 self.save_to_npz(output_dir, 'model_parameters_epoch_%02i.npz'%(epoch+1))
                 break
-            loss_ = loss
             if (epoch + 1) % smooth_interval == 0:
                 self.smooth()
             if (epoch + 1) % save_interval == 0:
@@ -246,7 +244,7 @@ class QuasarFactorModel(object):
         F_ = self.F.data.reshape(1, self.Npix, self.Nh)
         self.F = F.avg_pool2d(F_, kernel_size=(31, 1), stride=(1, 1), padding=(15, 0), count_include_pad=False).squeeze()
 
-    def save_to_npz(self, output_dir, file_name):
+    def save_to_npz(self, output_dir: str, file_name: str):
         """
         Save model parameters to a npz file with format like:
 
@@ -274,7 +272,7 @@ class QuasarFactorModel(object):
             os.mkdir(output_dir)
         np.savez(os.path.join(output_dir, file_name), mu=mu, F=F_, Psi=Psi, omega=omega, tau0=tau0, c0=c0, beta=beta)
 
-    def load_from_npz(self, path):
+    def load_from_npz(self, path: str):
         """Load model parameter from npz file
 
         Args:

@@ -30,7 +30,7 @@ def MatrixInverse(M: torch.Tensor, D: torch.Tensor, device: torch.device) -> tor
     return diagD - diagD @ M @ torch.linalg.inv(I + M.T @ diagD @ M) @ M.T @ diagD
 
 
-def MatrixLogDet(M: torch.Tensor, D: torch.Tensor, device: torch.deivce) -> torch.Tensor:
+def MatrixLogDet(M: torch.Tensor, D: torch.Tensor, device: torch.device) -> torch.Tensor:
     """
     Efficient and stable matrix log determinant function for matrix with structure:
     $$
