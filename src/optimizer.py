@@ -10,7 +10,7 @@ from typing import Callable, Dict
 
 class Adam(object):
 
-    def __init__(self, params: Dict[str, torch.Tensor], device: torch.divce, scheduler=Callable[[float, int], Callable[[int, float], float]], learning_rate: float=1e-2, b1: float=0.9, b2: float=0.999, eps: float=1e-8, weight_decay: float=1e-3) -> None:
+    def __init__(self, params: Dict[str, torch.Tensor], device: torch.device, scheduler=Callable[[float, int], Callable[[int, float], float]], learning_rate: float=1e-2, b1: float=0.9, b2: float=0.999, eps: float=1e-8, weight_decay: float=1e-3) -> None:
         """Adam optimizer
 
         Args:

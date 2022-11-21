@@ -31,9 +31,10 @@ def _read_npz_file(path: str)->Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
 def _read_from_catalog(flux, error, mask, zqso, catalog, data_dir, num, snr_min, snr_max, z_min, z_max, num_mask, nprocs):
     catalog = pd.read_csv(catalog)
     criteria = (catalog['snr']>=snr_min) & (catalog['snr']<=snr_max) & (catalog['z']>=z_min) & (catalog['z']<=z_max) & (catalog['num_mask']<=num_mask)
-    files = np.random.choice(catalog['file'][criteria].values, size=(num,), replace=(len(files)<num))
+    files = np.random.choice(catalog['file'][criteria].values, size=(num,), replace=(np.sum(criteria)<num))
+    paths = [os.path.join(data_dir, x) for x in files]
     with multiprocessing.Pool(nprocs) as p:
-        data = p.map(lambda x: _read_npz_file(os.path.join(data_dir, x)), files)
+        data = p.map(_read_npz_file, paths)
     for f, e, m, z in tqdm(data):
         flux.append(f)
         error.append(e)
@@ -44,7 +45,7 @@ def _read_from_catalog(flux, error, mask, zqso, catalog, data_dir, num, snr_min,
 class Dataloader(object):
 
     def __init__(self, config: CN):
-        self.wav_grid = 10**np.arange(config.LOGLAM_MIN, config.LOGLAM_MAX, config.LOGLAM_DELTA)
+        self.wav_grid = 10**np.arange(np.log10(config.DATA.LAMMIN), np.log10(config.DATA.LAMMAX), config.DATA.LOGLAM_DELTA)
         self.Nb = np.sum(self.wav_grid<_lya_peak)
         self.Nr = len(self.wav_grid) - self.Nb
 
@@ -61,7 +62,7 @@ class Dataloader(object):
             config.DATA.DATA_DIR, config.DATA.DATA_NUM, config.DATA.SNR_MIN, config.DATA.SNR_MAX, config.DATA.Z_MIN,
             config.DATA.Z_MAX, config.DATA.NUM_MASK, config.DATA.NPROCS)
         
-        if os.path.exists(config.DATA.VALIDATION_CATALOG) and os.path.exists(config.DATA.VALIDATION_DIR):
+        if os.path.exists(config.DATA.VALIDATION_CATALOG) and os.path.exists(config.DATA.VALIDATION_DIR) and config.DATA.VALIDATION:
             print("=> Load Validation Data...")
             _read_from_catalog(self.flux, self.error, self.mask, self.zqso, config.DATA.VALIDATION_CATALOG,
             config.DATA.VALIDATION_DIR, config.DATA.VALIDATION_NUM, config.DATA.SNR_MIN, config.DATA.SNR_MAX,
@@ -104,7 +105,7 @@ class Dataloader(object):
         start = self.cur
         end = self.cur + self.batch_size if self.cur + self.batch_size < self.data_size else self.data_size
         self.cur = end
-        s = np.hstack((np.exp(-1*self.tau(self.zabs[start: end])), np.ones((-start+end, self.Nr), dtype=float)))
+        s = np.hstack((np.exp(-1*self._tau(self.zabs[start: end])), np.ones((-start+end, self.Nr), dtype=float)))
         return torch.tensor(self.flux[start: end]-self._mu*s, dtype=torch.float32).to(self._device),\
             torch.tensor(self.error[start: end], dtype=torch.float32).to(self._device), torch.tensor(self.zabs[start: end], dtype=torch.float32).to(self._device), \
                 torch.tensor(self.mask[start: end], dtype=bool).to(self._device)

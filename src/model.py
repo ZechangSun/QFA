@@ -10,7 +10,8 @@ import torch
 import time
 import os
 import numpy as np
-from utils import MatrixInverse, MatrixLogDet, tau, tauHI, omega_func
+from utils import MatrixInverse, MatrixLogDet, tauHI, omega_func
+from utils import tau as default_tau
 
 from torch.nn import functional as F
 
@@ -20,7 +21,7 @@ log2pi = 1.8378770664093453
 
 class QFA(object):
 
-    def __init__(self, Nb: int, Nr: int, Nh: int,  device: torch.device, tau: Callable[[torch.Tensor, ], torch.Tensor]=tau, model_params:Dict[str, np.ndarray]=None) -> None:
+    def __init__(self, Nb: int, Nr: int, Nh: int,  device: torch.device, tau: Callable[[torch.Tensor, ], torch.Tensor]=default_tau, model_params:Dict[str, np.ndarray]=None) -> None:
         """
         Initialization for the spectra model
         Args:
@@ -194,7 +195,7 @@ class QFA(object):
         """
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
-        self.mu = torch.tensor(dataloader.mu_, dtype=torch.float32).to(self.device)
+        self.mu = torch.tensor(dataloader.mu, dtype=torch.float32).to(self.device)
         Niter = dataloader.data_size//dataloader.batch_size
         def step(i):
             dataloader.rewind()

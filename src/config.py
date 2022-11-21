@@ -15,7 +15,7 @@ _C = CN()
 
 # Base config files
 _C.BASE = ['']
-_C.MODE = 'train'
+_C.GPU = 0
 
 #------------------
 # Data settings
@@ -34,15 +34,19 @@ _C.DATA.SNR_MAX = 100
 _C.DATA.Z_MIN = 2
 _C.DATA.Z_MAX = 3.5
 _C.DATA.NUM_MASK = 0
-_C.DATA.LOGLAM_MIN = np.log10(1030.)
-_C.DATA.LOGLAM_MAX = np.log10(1600.)
+_C.DATA.LAMMIN = 1030.
+_C.DATA.LAMMAX = 1600.
 _C.DATA.LOGLAM_DELTA = 1e-4
 _C.DATA.NPROCS = 24
+_C.DATA.VALIDATION = False
 
 
 #------------------
 # Model settings
 #------------------
+_C.MODEL = CN()
+_C.MODEL.NH = 8
+_C.MODEL.RESUME = ''
 
 
 #------------------
@@ -71,7 +75,8 @@ def _update_config_from_file(config, cfg_file):
 
 
 def update_config(config, args):
-    _update_config_from_file(config, args.cfg)
+    if isinstance(args.cfg, str):
+        _update_config_from_file(config, args.cfg)
 
     config.defrost()
     if args.opts:
@@ -82,6 +87,8 @@ def update_config(config, args):
             return True
         return False
 
+    if _check_args('gpu'):
+        config.GPU = args.gpu
 
     if _check_args('n_epochs'):
         config.TRAIN.NEPOCHS = args.n_epochs
@@ -118,10 +125,14 @@ def update_config(config, args):
         config.DATA.Z_MIN = args.z_min
     if _check_args('z_max'):
         config.DATA.Z_MAX = args.z_max
+    if _check_args('num_mask'):
+        config.DATA.NUM_MASK = args.num_mask
     if _check_args('nprocs'):
         config.DATA.NPROCS = args.nprocs
+    if _check_args('validation'):
+        config.DATA.VALIDATION = args.validation
 
-    
+
     config.freeze()
 
 

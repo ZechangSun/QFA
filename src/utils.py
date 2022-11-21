@@ -5,6 +5,8 @@ Email: szc22@mails.tsinghua.edu.cn
 Reference: An Unsupervised Learning Approach for Quasar Continuum Prediction [https://arxiv.org/abs/2207.02788]
 """
 import torch
+import numpy as np
+from typing import Optional
 
 
 def MatrixInverse(M: torch.Tensor, D: torch.Tensor, device: torch.device) -> torch.Tensor:
@@ -90,7 +92,7 @@ def omega_func(z: torch.Tensor, tau0: torch.float32, beta: torch.float32, c0: to
     return root*root
 
 
-def tau(z: torch.Tensor):
+def tau(z: torch.Tensor)->torch.Tensor:
     """
     mean optical depth measured by Becker et al. 2012 [https://arxiv.org/abs/1208.2584]
     ----------------------------------------------------------------------
@@ -98,7 +100,23 @@ def tau(z: torch.Tensor):
         z (torch.Tensor (shape=(N, ), dtype=torch.float32)): redshift array
 
     Returns:
-        effective optical depth: (torch.array (shape=(N, ), dtype=torch.float32))
+        effective optical depth: (torch.Tensor (shape=(N, ), dtype=torch.float32))
     """
     tau0, beta, C, z0 = (0.751, 2.90, -0.132, 3.5)
     return tau0 * ((1+z)/(1+z0)) ** beta + C
+
+
+def smooth(s: np.ndarray, window_len: Optional[int]=32):
+    """Smooth curve s with corresponding window length
+
+    Args:
+        s (numpy.ndarray (shape: (N, ), dtype=float)): a 1d curve
+        window_len (int, optional): smoothing window. Defaults to 32.
+
+    Returns:
+        smoothed curve (numpy.ndarray (shape: (N, ), dtype=float))
+    """
+    s = np.r_[s[window_len-1:0:-1], s, s[-2:-window_len-1:-1]]
+    kernel = np.ones(window_len, dtype=float)/window_len
+    y = np.convolve(kernel, s, mode='valid')
+    return y[int(window_len/2-1):-int(window_len/2)]
