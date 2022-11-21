@@ -174,7 +174,7 @@ class QFA(object):
         Sigma_e = torch.diag(1./diag)
         hcov = torch.linalg.inv(torch.eye(self.Nh, dtype=torch.float).to(self.device) + F.T@Sigma_e@F)
         hmean = hcov@F.T@Sigma_e@masked_delta
-        return loglikelihood, hmean, self.F@hmean + self.mu, torch.diag(self.F@hcov@self.F.T)
+        return loglikelihood, hmean, hcov, self.F@hmean + self.mu, torch.diag(self.F@hcov@self.F.T)**0.5
 
 
     def train(self, optimizer, dataloader, n_epochs, output_dir="./result", save_interval=5, smooth_interval=5, quiet=False, logger=None):
