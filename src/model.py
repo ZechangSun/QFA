@@ -20,14 +20,14 @@ log2pi = 1.8378770664093453
 
 class QuasarFactorModel(object):
 
-    def __init__(self, Nb: int, Nr: int, Nh: int,  device: torch.device, tau: Callable[[torch.Tensor, ], torch.Tensor]=tau, model_params=Dict[str, np.ndarray]) -> None:
+    def __init__(self, Nb: int, Nr: int, Nh: int,  device: torch.device, tau: Callable[[torch.Tensor, ], torch.Tensor]=tau, model_params:Dict[str, np.ndarray]=None) -> None:
         """
         Initialization for the spectra model
         Args:
-            Nb (int): The number of pixels for the blue spectra
-            Nr (int): The number of pixels for the redwards spectra
+            Nb (int): The number of pixels for the blue-side spectra
+            Nr (int): The number of pixels for the red-side spectra
             Nh (int): The number of hidden variables
-            device (torch.device): the device of the 
+            device (torch.device): the device of the model
             tau (function): effective optical depth
             model_params (_type_, optional): dict {"F", "Psi", "omega", "tau0", "c0", "beta"} Defaults to None.
         """
@@ -35,11 +35,11 @@ class QuasarFactorModel(object):
         self.Nr = Nr
         self.Nh = Nh
         self.device = device
-        self.Npix = self.Nb + self.Nr
-        self.Nparams = self.Npix*self.Nh + self.Npix + self.Nb + 3
+        self.Npix = self.Nb + self.Nr # total number pixel number
+        self.Nparams = self.Npix*self.Nh + self.Npix + self.Nb + 3 # total number of model parameters
         self.tau = tau
-        self.min_value = 1e-3
-        self.max_value = 2.
+        self.min_value = 1e-3 # minimum tolerated value for omega & Psi
+        self.max_value = 2. # maximum tolerated value for omega & Psi
         if model_params is not None:
             self.F = torch.tensor(model_params['F']).to(self.device)
             self.Psi = torch.tensor(model_params['Psi']).to(self.device)
