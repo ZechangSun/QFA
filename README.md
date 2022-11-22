@@ -22,14 +22,16 @@ For more details, we refer to
 * [*An Unsupervised Learning Approach for Quasar Continuum Prediction*](https://arxiv.org/abs/2207.02788)  for a brief summary
 * [*Quasar Factor Analysis – An Unsupervised and Probabilistic Quasar Continuum Prediction Algorithm with Latent Factor Analysis*]()  for a detailed description
 
-This document is arranged as:
-
-* [**How QFA works?**](###How QFA works?): we show the basic idea of QFA to model quasar spectra and infer quasar continuum here 🤏
-  * [Model assumption](####Model assumption) : we display the statistical assumptions of QFA here 🧐
-  * [Training](#### Training): we show how to train the model here 👊
-  * [Continuum inference](#### Continuum inference): we show how to perform continuum inference here ✌️
-* [**How to install this package?**](###How to install this package?): we show how to use this package here 😜
-*  [**About this repository**](###About repository) : the document of this repository can be found here 🫶
+<details><summary>This document is arranged as:</summary>
+<p>
+* **How QFA works?**: we show the basic idea of QFA to model quasar spectra and infer quasar continuum here 🤏
+  * Model assumption: we display the statistical assumptions of QFA here 🧐
+  * Training: we show how to train the model here 👊
+  * Continuum inference: we show how to perform continuum inference here ✌️
+* **How to install this package?**: we show how to use this package here 😜
+* **About this repository**: the document of this repository can be found here 🫶
+</p>
+</details>
 
 ### How QFA works?
 
