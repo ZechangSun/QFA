@@ -44,9 +44,9 @@ We show the schematic plot of QFA here
 QFA is build upon two assumptions:
 
 1. Quasar continuum can be modeled as a factor model
-   $$
-   \mathbf{C} = \mu + F\mathbf{h}+\boldsymbol{\Psi}
-   $$
+```math
+  \mathbf{C} = \mu + F\mathbf{h}+\boldsymbol{\Psi}
+```
 
 2. The Ly$\alpha$ forest can be approximated as Gaussian random fluctuations
    $$
