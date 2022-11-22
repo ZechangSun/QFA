@@ -37,7 +37,7 @@ QFA generatively models observed quasar spectra and applys the learned model to 
 
 We show the schematic plot of QFA here
 
-![icml](./figure/schematic.pdf)
+![icml](./figure/schematic.png)
 
 #### Model assumption
 
@@ -49,9 +49,9 @@ QFA is build upon two assumptions:
 ```
 
 2. The Ly$\alpha$ forest can be approximated as Gaussian random fluctuations
-   $$
+```math
    \boldsymbol{\mathrm{\omega}}(z) \sim\mathcal{N}(0,\Sigma_\omega)
-   $$
+```
 
 #### Training
 
@@ -59,7 +59,7 @@ QFA is build upon two assumptions:
 
 We give an example of continuum inference with QFA here.
 
-![example](./figure/example.pdf)
+![example](./figure/example.png)
 
 ### How to install this package?
 
