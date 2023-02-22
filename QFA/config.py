@@ -46,6 +46,7 @@ _C.DATA.VALIDATION = False
 #------------------
 _C.MODEL = CN()
 _C.MODEL.NH = 8
+_C.MODEL.TAU = 'becker'
 _C.MODEL.RESUME = ''
 
 
@@ -131,6 +132,8 @@ def update_config(config, args):
         config.DATA.NPROCS = args.nprocs
     if _check_args('validation'):
         config.DATA.VALIDATION = args.validation
+    if _check_args('tau'):
+        config.MODEL.TAU = args.tau
 
 
     config.freeze()

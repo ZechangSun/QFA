@@ -11,12 +11,14 @@ import time
 import os
 import numpy as np
 from .utils import MatrixInverse, MatrixLogDet, tauHI, omega_func
-from .utils import tau as default_tau
+from .utils import tau as taufunc
+from functools import partial
 
 from torch.nn import functional as F
 
 
 log2pi = 1.8378770664093453
+default_tau = partial(taufunc, which='becker')
 
 
 class QFA(object):
@@ -129,8 +131,8 @@ class QFA(object):
         diag = Psi + omega + masked_error*masked_error
         invSigma = MatrixInverse(F, diag, self.device)
         logDet = MatrixLogDet(F, diag, self.device)
-        loglikelihood = 0.5*(masked_delta.T @ invSigma @ masked_delta + Npix * log2pi + logDet)
-        masked_delta = masked_delta.reshape((-1, 1))
+        masked_delta = masked_delta[:, None]
+        loglikelihood = 0.5*(masked_delta.mT @ invSigma @ masked_delta + Npix * log2pi + logDet)
         partialSigma = 0.5*(invSigma-invSigma@masked_delta@masked_delta.T@invSigma)
         partialF = 2*diagA@partialSigma@diagA@F
         diagPartialSigma = torch.diag(partialSigma)
@@ -193,6 +195,9 @@ class QFA(object):
         Returns:
             None
         """
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
+        output_dir = os.path.join(output_dir, 'checkpoints')
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
         self.mu = torch.tensor(dataloader.mu, dtype=torch.float32).to(self.device)
