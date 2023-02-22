@@ -51,8 +51,10 @@ def overlap(sightline, data:DesiMock, id):
     
     loglam_r, loglam_b, loglam_z = loglam_r[indice_r], line_b.loglam[indice_b], line_z.loglam[indice_z]
     flux_r, flux_b, flux_z = line_r.flux[indice_r], line_b.flux[indice_b], line_z.flux[indice_z]
+    error_r, error_b, error_z = line_r.error[indice_r], line_b.error[indice_b], line_z.error[indice_z]
     sightline.loglam = np.concatenate((loglam_b, loglam_r, loglam_z))
     sightline.flux = np.concatenate((flux_b, flux_r, flux_z))
+    sightline.error = np.concatenate((error_b, error_r, error_z))
     
     
 # def clip(sightline, unit, plot=False):
@@ -114,10 +116,12 @@ def clip(sightline, unit_default=100, slope=2e-3, plot=False):
     
     wavs = 10**sightline.loglam
     flux = sightline.flux
+    error = sightline.error
     zero_point = np.where(wavs / (1+sightline.z_qso) >= LyALPHA)[0][0]
 
     wavs_new = wavs[0:zero_point]
     flux_new = flux[0:zero_point]
+    error_new = error[0:zero_point]
     
     if plot:
         sigmaup, sigmadown = np.zeros(zero_point), np.zeros(zero_point)
@@ -131,7 +135,7 @@ def clip(sightline, unit_default=100, slope=2e-3, plot=False):
             judge = False
             if start == end:
                 break
-        subwavs, subflux = wavs[start:end], flux[start:end]
+        subwavs, subflux, suberror = wavs[start:end], flux[start:end], error[start:end]
         if end - start >= 3:
             slope_fit = line_fit(subwavs, subflux)[0]
 
@@ -143,7 +147,7 @@ def clip(sightline, unit_default=100, slope=2e-3, plot=False):
                     judge = False
                     if start == end:
                         break
-                subwavs, subflux = wavs[start:end], flux[start:end]
+                subwavs, subflux, suberror = wavs[start:end], flux[start:end], error[start:end]
 
             elif np.abs(slope_fit) < slope and unit != unit_default:
                 unit = unit_default
@@ -153,15 +157,17 @@ def clip(sightline, unit_default=100, slope=2e-3, plot=False):
                     judge = False
                     if start == end:
                         break
-                subwavs, subflux = wavs[start:end], flux[start:end]
+                subwavs, subflux, suberror = wavs[start:end], flux[start:end], error[start:end]
 
             mask = np.invert(sigma_clip(subflux, sigma=3).mask)
             flux_cliped = subflux[mask]
             wavs_cliped = subwavs[mask]
+            error_cliped = suberror[mask]
         else:
-            flux_cliped, wavs_cliped = subflux, subwavs
+            flux_cliped, wavs_cliped, error_cliped = subflux, subwavs, suberror
         wavs_new = np.concatenate((wavs_new, wavs_cliped))
         flux_new = np.concatenate((flux_new, flux_cliped))
+        error_new = np.concatenate((error_new, error_cliped))
         start = start +  unit
         end = end + unit
         if plot:
@@ -172,10 +178,12 @@ def clip(sightline, unit_default=100, slope=2e-3, plot=False):
         
     sightline.loglam_cliped = np.log10(wavs_new)
     sightline.flux_cliped = flux_new
+    sightline.error_cliped = error_new
     
     if plot:
         plt.plot(wavs, flux)
         plt.plot(wavs_new[zero_point:], sigmaup[zero_point:])
         plt.plot(wavs_new[zero_point:], sigmadown[zero_point:])
         plt.axvline(LyALPHA*(1+sightline.z_qso), linestyle='--')
+        plt.show()
     
