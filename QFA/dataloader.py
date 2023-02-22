@@ -28,10 +28,13 @@ def _read_npz_file(path: str)->Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
     return flux, error, mask, z
 
 
-def _read_from_catalog(flux, error, mask, zqso, catalog, data_dir, num, snr_min, snr_max, z_min, z_max, num_mask, nprocs):
+def _read_from_catalog(flux, error, mask, zqso, catalog, data_dir, num, snr_min, snr_max, z_min, z_max, num_mask, nprocs, output_dir, prefix='train'):
     catalog = pd.read_csv(catalog)
     criteria = (catalog['snr']>=snr_min) & (catalog['snr']<=snr_max) & (catalog['z']>=z_min) & (catalog['z']<=z_max) & (catalog['num_mask']<=num_mask)
     files = np.random.choice(catalog['file'][criteria].values, size=(num,), replace=(np.sum(criteria)<num))
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+    pd.Series(files).to_csv(os.path.join(output_dir, f'{prefix}-catalog.csv'), header=False, index=False)
     paths = [os.path.join(data_dir, x) for x in files]
     with multiprocessing.Pool(nprocs) as p:
         data = p.map(_read_npz_file, paths)
@@ -60,13 +63,13 @@ class Dataloader(object):
         print("=> Load Data...")
         _read_from_catalog(self.flux, self.error, self.mask, self.zqso, config.DATA.CATALOG,
             config.DATA.DATA_DIR, config.DATA.DATA_NUM, config.DATA.SNR_MIN, config.DATA.SNR_MAX, config.DATA.Z_MIN,
-            config.DATA.Z_MAX, config.DATA.NUM_MASK, config.DATA.NPROCS)
+            config.DATA.Z_MAX, config.DATA.NUM_MASK, config.DATA.NPROCS, config.DATA.OUTPUT_DIR, 'train')
         
         if os.path.exists(config.DATA.VALIDATION_CATALOG) and os.path.exists(config.DATA.VALIDATION_DIR) and config.DATA.VALIDATION:
             print("=> Load Validation Data...")
             _read_from_catalog(self.flux, self.error, self.mask, self.zqso, config.DATA.VALIDATION_CATALOG,
             config.DATA.VALIDATION_DIR, config.DATA.VALIDATION_NUM, config.DATA.SNR_MIN, config.DATA.SNR_MAX,
-            config.DATA.Z_MIN, config.DATA.Z_MAX, config.DATA.NUM_MASK, config.DATA.NPROCS)
+            config.DATA.Z_MIN, config.DATA.Z_MAX, config.DATA.NUM_MASK, config.DATA.NPROCS, config.DATA.OUTPUT_DIR, 'validation')
 
 
         self.flux = np.array(self.flux)

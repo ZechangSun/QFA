@@ -92,7 +92,7 @@ def omega_func(z: torch.Tensor, tau0: torch.float32, beta: torch.float32, c0: to
     return root*root
 
 
-def tau(z: torch.Tensor)->torch.Tensor:
+def _tau_becker(z: torch.Tensor)->torch.Tensor:
     """
     mean optical depth measured by Becker et al. 2012 [https://arxiv.org/abs/1208.2584]
     ----------------------------------------------------------------------
@@ -104,6 +104,54 @@ def tau(z: torch.Tensor)->torch.Tensor:
     """
     tau0, beta, C, z0 = (0.751, 2.90, -0.132, 3.5)
     return tau0 * ((1+z)/(1+z0)) ** beta + C
+
+
+def _tau_fg(z: torch.Tensor)->torch.Tensor:
+    """
+    mean optical depth measured by Faucher Giguere et al. 2008 [https://iopscience.iop.org/article/10.1086/588648]
+    -------------------------------------------------------------------------
+    Args:
+        z (torch.Tensor (shape=(N, ), dtype=torch.float32)): redshift array
+    
+    Returns:
+        effective optical depth: (torch.Tensor (shape=(N, ), dtype=torch.float32))
+    """
+    tau0, beta = 0.0018, 3.92
+    return tau0 * (1+z) ** beta
+
+
+def _tau_kamble(z: torch.Tensor)->torch.Tensor:
+    """
+    mean optical depth measured by Kamble et al. 2020 [https://ui.adsabs.harvard.edu/abs/2020ApJ...892...70K/abstract]
+    ------------------------------------------------------------------------------------------
+    Args:
+        z (torch.Tensor (shape=(N, ), dtype=torch.float32)): redshift array
+    
+    Returns:
+        effective optical depth: (torch.Tensor (shape=(N, ), dtype=torch.float32))
+    """
+    tau0, beta = 5.54*1e-3, 3.182
+    return tau0 * (1+z) ** beta
+
+
+def tau(z: torch.Tensor, which: Optional[str]='becker') -> torch.Tensor:
+    """
+    mean optical depth function
+    ---------------------------------------------------
+    Args:
+        z (torch.Tensor (shape=(N, ), dtype=torch.float32)): redshift array
+        which (str): which measurement to use ["becker", 'fg', 'kamble']
+    Returns:
+        effective optical depth: (torch.Tensor (shape=(N, ), dtype=torch.float32))
+    """
+    if which == 'becker':
+        return _tau_becker(z)
+    elif which == 'fg':
+        return _tau_fg(z)
+    elif which == 'kamble':
+        return _tau_kamble(z)
+    else:
+        raise NotImplementedError("currently available mean optical depth function: ['becker', 'fg', 'kamble']")
 
 
 def smooth(s: np.ndarray, window_len: Optional[int]=32):
