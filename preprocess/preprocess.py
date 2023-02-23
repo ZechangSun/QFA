@@ -1,18 +1,10 @@
 from dla_cnn.desi.DesiMock import DesiMock
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-from astropy.io import fits
 from scipy.interpolate import interp1d
 from astropy.stats import sigma_clip
 from scipy.optimize import curve_fit
-
-LyALPHA = 1215.6701
-LyBETA = 1025.7220
-MgII1 = 1482.890
-MgII2 = 1737.628
-CIV1 = 1550
-CIV2 = 1910
+from wavelength import *
 
 def overlap(sightline, data:DesiMock, id):
     '''

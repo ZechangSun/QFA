@@ -2,7 +2,8 @@ import os
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from dla_cnn.desi.DesiMock import DesiMock
+from ./data/DesiMock import DesiMock
+from wavelength import *
 
 # Prepare the wavelengths of some important emission lines
 # Wavelengths here may be WRONG. Please check them before using.
