@@ -3,16 +3,12 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 from dla_cnn.desi.DesiMock import DesiMock
-from wavelength import *
+import json
 
 # Prepare the wavelengths of some important emission lines
 
-lams = np.array([LyBETA, LyALPHA, MgII1, CIV1, MgII2, CIV2])
-names = ['LyBETA', 'LyALPHA', 'MgII1', 'CIV1', 'MgII2', 'CIV2']
-lines = {}
-for i, name in enumerate(names):
-    lines[name] = lams[i]
-    
+lines = json.load(open('./wavelength.json', 'r'))
+
 # prepare for the data path
 def generate_suffix(prefix):
     suffix = {}

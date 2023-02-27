@@ -1,10 +1,11 @@
 from dla_cnn.desi.DesiMock import DesiMock
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from astropy.stats import sigma_clip
 from scipy.optimize import curve_fit
-import wavelength as wlh
+import json
+
+wlh = json.load(open('wavelength.json'))
 
 def get_spilt_point(data:DesiMock, id):
     '''
@@ -92,7 +93,7 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5):
     wavs = 10**sightline.loglam
     flux = sightline.flux
     error = sightline.error
-    zero_point = np.where(wavs / (1+sightline.z_qso) >= wlh.LyALPHA)[0][0]
+    zero_point = np.where(wavs / (1+sightline.z_qso) >= wlh['LyALPHA'])[0][0]
     sightline.points_num = len(wavs)
 
     wavs_new = wavs[0:zero_point]
