@@ -75,7 +75,7 @@ def overlap(sightline, data:DesiMock, id):
     sightline.error = np.concatenate((error_b, error_r, error_z))
     
         
-def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5, plot=False):
+def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5):
     '''
     Clip the abnormal points in the spectra.
     
@@ -89,14 +89,6 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5, plot=False):
     `plot`: if true, this function can generate a plot that shows every bin's clipping upper and lower limit as well as the original spectrum that has not been clipped, which can clearly show which points are clipped. Ofter used in jupyter notebook. 
     '''
     
-    def line_fit(xdata, ydata):
-    
-        def linear(x, *args):
-            return args[0] * x + args[1]
-        
-        popt, pcov = curve_fit(f=linear, xdata=xdata, ydata=ydata, p0=(1e-3, 0))
-        return popt
-    
     wavs = 10**sightline.loglam
     flux = sightline.flux
     error = sightline.error
@@ -106,9 +98,6 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5, plot=False):
     wavs_new = wavs[0:zero_point]
     flux_new = flux[0:zero_point]
     error_new = error[0:zero_point]
-    
-    if plot:
-        sigmaup, sigmadown = np.zeros(zero_point), np.zeros(zero_point)
         
     unit = unit_default
     judge, start, end = True, zero_point, zero_point + unit
@@ -121,7 +110,7 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5, plot=False):
                 break
         subwavs, subflux, suberror = wavs[start:end], flux[start:end], error[start:end]
         if end - start >= 3:
-            slope_fit = line_fit(subwavs, subflux)[0]
+            slope_fit = curve_fit(lambda t,a,b: a*t+b, subwavs, subflux)[0][0]
 
             if np.abs(slope_fit) >= slope:
                 unit = int(unit_default*ratio)
@@ -154,22 +143,10 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5, plot=False):
         error_new = np.concatenate((error_new, error_cliped))
         start = start +  unit
         end = end + unit
-        if plot:
-            sigma = np.std(subflux)
-            mean = np.average(subflux)
-            sigmaup = np.concatenate((sigmaup, np.ones_like(wavs_cliped)*(mean+3*sigma)))
-            sigmadown = np.concatenate((sigmadown, np.ones_like(wavs_cliped)*(mean-3*sigma)))
         
     sightline.loglam_cliped = np.log10(wavs_new)
     sightline.flux_cliped = flux_new
     sightline.error_cliped = error_new
-    
-    if plot:
-        plt.plot(wavs, flux)
-        plt.plot(wavs_new[zero_point:], sigmaup[zero_point:])
-        plt.plot(wavs_new[zero_point:], sigmadown[zero_point:])
-        plt.axvline(wlh.LyALPHA*(1+sightline.z_qso), linestyle='--')
-        plt.show()
     
 def get_dlnlambda(sightline):
     '''
@@ -210,7 +187,7 @@ def rebin(sightline, loglam_start, dlnlambda, max_index:int=int(1e6)):
     indices = get_between(new_wavelength_total, max_wavelength, min_wavelength, maxif=True, minif=True)
     new_wavelength = new_wavelength_total[indices]
     
-    # 以下抄了学长的代码
+    # below is the code from dla_cnn.data_model.Spectrum.rebin()
     npix = len(wavelength)
     wvh = (wavelength + np.roll(wavelength, -1)) / 2.
     wvh[npix - 1] = wavelength[npix - 1] + \
