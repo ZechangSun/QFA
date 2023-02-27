@@ -4,39 +4,59 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from astropy.stats import sigma_clip
 from scipy.optimize import curve_fit
-from wavelength import *
+import wavelength as wlh
+
+def get_spilt_point(data:DesiMock, id):
+    '''
+    Get the spilt point in the overlapping area. Before this point we reserve the spectrum from the last camera, and after this point we reserve the ones from the next camera.
+    
+    -----
+    ### Parameters:
+    `data` and `id`: the original dataset from which the sightline is extracted by `DesiMock().get_sightline()` and the id of this sightline.
+    '''
+    line_b = data.get_sightline(id=id, camera='b')
+    line_z = data.get_sightline(id=id, camera='z')
+    line_r = data.get_sightline(id=id, camera='r')
+    spilt_loglam_br = np.average([np.max(line_b.loglam), np.min(line_r.loglam)])
+    spilt_loglam_rz = np.average([np.min(line_z.loglam), np.max(line_r.loglam)])
+    return spilt_loglam_br, spilt_loglam_rz
+
+def get_between(array, max, min, maxif=False, minif=False):
+    '''
+    Get the indices of a part of `array` whose value is between `max` and `min`.
+    
+    ------
+    ### Parameters:
+    `array`: the array which we will process the above procedure on.
+    `max` and `min`: the upper and lower limit for the new child array.
+    `maxif` and `minif`: whether the values EQUAL to `max` and `min` can be included in the new child array.
+    '''
+    if max >= min:
+        if max >= np.min(array) and min <= np.max(array):
+            if maxif:
+                if minif:
+                    return np.intersect1d(np.where(array>=min)[0], np.where(array<=max)[0])
+                else:
+                    return np.intersect1d(np.where(array>min)[0], np.where(array<=max)[0])
+            else:
+                if minif:
+                    return np.intersect1d(np.where(array>=min)[0], np.where(array<max)[0])
+                else:
+                    return np.intersect1d(np.where(array>min)[0], np.where(array<max)[0])
+        else:
+            raise ValueError('min~max out of range')
+    else:
+        raise ValueError('max < min, will return nothing')
 
 def overlap(sightline, data:DesiMock, id):
     '''
     Deal with the overlapping area between different cameras so that the result will not contain the overlaps.
     
     ---
-    
     ### Parameters
     `sightline`: the spectra that is waiting to be rebinned. It must have been clipped by `clip()`.
     `data` and `id`: the original dataset from which the sightline is extracted by `DesiMock().get_sightline()` and the id of this sightline.
     '''
-    
-    
-    def get_spilt_point(data:DesiMock, id):
-        line_b = data.get_sightline(id=id, camera='b')
-        line_z = data.get_sightline(id=id, camera='z')
-        line_r = data.get_sightline(id=id, camera='r')
-        spilt_loglam_br = np.average([np.max(line_b.loglam), np.min(line_r.loglam)])
-        spilt_loglam_rz = np.average([np.min(line_z.loglam), np.max(line_r.loglam)])
-        return spilt_loglam_br, spilt_loglam_rz
-
-    def get_between(array, max, min, maxif=False, minif=False):
-        if maxif:
-            if minif:
-                return np.intersect1d(np.where(array>=min)[0], np.where(array<=max)[0])
-            else:
-                return np.intersect1d(np.where(array>min)[0], np.where(array<=max)[0])
-        else:
-            if minif:
-                return np.intersect1d(np.where(array>=min)[0], np.where(array<max)[0])
-            else:
-                return np.intersect1d(np.where(array>min)[0], np.where(array<max)[0])
     spilt_loglam_br, spilt_loglam_rz = get_spilt_point(data, id)
     line_r = data.get_sightline(id=id, camera='r')
     line_b = data.get_sightline(id=id, camera='b')
@@ -54,51 +74,7 @@ def overlap(sightline, data:DesiMock, id):
     sightline.flux = np.concatenate((flux_b, flux_r, flux_z))
     sightline.error = np.concatenate((error_b, error_r, error_z))
     
-    
-# def clip(sightline, unit, plot=False):
-#     wavs = 10**sightline.loglam
-#     flux = sightline.flux
-#     zero_point = np.where(wavs / (1+sightline.z_qso) >= LyALPHA)[0][0]
-#     i = 0
-
-#     wavs_new = wavs[0:zero_point]
-#     flux_new = flux[0:zero_point]
-    
-#     if plot:
-#         sigmaup, sigmadown = np.zeros(zero_point), np.zeros(zero_point)
         
-#     judge = True
-#     while judge:
-#         start = zero_point + i * unit
-#         end = zero_point + (i+1) * unit
-#         if end >= len(wavs):
-#             end = len(wavs) - 1
-#             judge = False
-#             if start == end:
-#                 break
-#         subwavs = wavs[start:end]
-#         subflux = flux[start:end]
-#         mask = np.invert(sigma_clip(subflux, sigma=3).mask)
-#         flux_cliped = subflux[mask]
-#         wavs_cliped = subwavs[mask]
-#         wavs_new = np.concatenate((wavs_new, wavs_cliped))
-#         flux_new = np.concatenate((flux_new, flux_cliped))
-#         if plot:
-#             sigma = np.std(subflux)
-#             mean = np.average(subflux)
-#             sigmaup = np.concatenate((sigmaup, np.ones_like(wavs_cliped)*(mean+3*sigma)))
-#             sigmadown = np.concatenate((sigmadown, np.ones_like(wavs_cliped)*(mean-3*sigma)))
-#         i = i + 1
-        
-#     sightline.loglam_cliped = np.log10(wavs_new)
-#     sightline.flux_cliped = flux_new
-    
-#     if plot:
-#         plt.plot(wavs, flux)
-#         plt.plot(wavs_new[zero_point:], sigmaup[zero_point:])
-#         plt.plot(wavs_new[zero_point:], sigmadown[zero_point:])
-#         plt.axvline(LyALPHA*(1+sightline.z_qso), linestyle='--')
-    
 def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5, plot=False):
     '''
     Clip the abnormal points in the spectra.
@@ -124,7 +100,7 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5, plot=False):
     wavs = 10**sightline.loglam
     flux = sightline.flux
     error = sightline.error
-    zero_point = np.where(wavs / (1+sightline.z_qso) >= LyALPHA)[0][0]
+    zero_point = np.where(wavs / (1+sightline.z_qso) >= wlh.LyALPHA)[0][0]
     sightline.points_num = len(wavs)
 
     wavs_new = wavs[0:zero_point]
@@ -192,7 +168,7 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5, plot=False):
         plt.plot(wavs, flux)
         plt.plot(wavs_new[zero_point:], sigmaup[zero_point:])
         plt.plot(wavs_new[zero_point:], sigmadown[zero_point:])
-        plt.axvline(LyALPHA*(1+sightline.z_qso), linestyle='--')
+        plt.axvline(wlh.LyALPHA*(1+sightline.z_qso), linestyle='--')
         plt.show()
     
 def get_dlnlambda(sightline):
@@ -223,14 +199,6 @@ def rebin(sightline, loglam_start, dlnlambda, max_index:int=int(1e6)):
     `dlnlambda`: the step length of this restframe grid. It can be derived with `get_dlnlambda()`.
     `max_index`: because different spectra has different range of wavelength in restframe, so it is necessary to make the restframe grid large enough to contain all of these spectrum. This parameter is the size of this grid, which is usually very big. You can change the default value if you think it is too big.
     '''
-    def get_between(array, max, min):
-        if max >= min:
-            if max >= np.min(array) and min <= np.max(array):
-                return np.intersect1d(np.where(array>=min)[0], np.where(array<=max)[0])
-            else:
-                raise ValueError('min~max out of range')
-        else:
-            raise ValueError('max < min, will return nothing')
     
     wavelength = 10**sightline.loglam_cliped / (1+sightline.z_qso)
     flux = sightline.flux_cliped
@@ -239,10 +207,10 @@ def rebin(sightline, loglam_start, dlnlambda, max_index:int=int(1e6)):
     max_wavelength = wavelength[-1]
     min_wavelength = wavelength[0]
     new_wavelength_total = 10**loglam_start * np.exp(dlnlambda * np.arange(max_index))
-    indices = get_between(new_wavelength_total, max_wavelength, min_wavelength)
+    indices = get_between(new_wavelength_total, max_wavelength, min_wavelength, maxif=True, minif=True)
     new_wavelength = new_wavelength_total[indices]
     
-    # 以下抄了学长的代码hhh
+    # 以下抄了学长的代码
     npix = len(wavelength)
     wvh = (wavelength + np.roll(wavelength, -1)) / 2.
     wvh[npix - 1] = wavelength[npix - 1] + \

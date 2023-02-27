@@ -2,17 +2,11 @@ import os
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from ./data/DesiMock import DesiMock
+from dla_cnn.desi.DesiMock import DesiMock
 from wavelength import *
 
 # Prepare the wavelengths of some important emission lines
-# Wavelengths here may be WRONG. Please check them before using.
-LyALPHA = 1215.6701
-LyBETA = 1025.7220
-MgII1 = 1482.890
-MgII2 = 1737.628
-CIV1 = 1550
-CIV2 = 1910
+
 lams = np.array([LyBETA, LyALPHA, MgII1, CIV1, MgII2, CIV2])
 names = ['LyBETA', 'LyALPHA', 'MgII1', 'CIV1', 'MgII2', 'CIV2']
 lines = {}
