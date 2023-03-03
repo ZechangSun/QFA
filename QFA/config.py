@@ -15,6 +15,7 @@ _C = CN()
 
 # Base config files
 _C.BASE = ['']
+_C.TYPE = "train"
 _C.GPU = 0
 
 #------------------
@@ -60,6 +61,7 @@ _C.TRAIN.WEIGHT_DECAY = 1e-1
 _C.TRAIN.DECAY_ALPHA = 0.9
 _C.TRAIN.DECAY_STEP = 10
 _C.TRAIN.WINDOW_LENGTH_FOR_MU = 16
+
 
 
 def _update_config_from_file(config, cfg_file):
@@ -134,6 +136,8 @@ def update_config(config, args):
         config.DATA.VALIDATION = args.validation
     if _check_args('tau'):
         config.MODEL.TAU = args.tau
+    if _check_args('type'):
+        config.TYPE = args.type
 
 
     config.freeze()

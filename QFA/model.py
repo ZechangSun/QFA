@@ -133,7 +133,7 @@ class QFA(object):
         logDet = MatrixLogDet(F, diag, self.device)
         masked_delta = masked_delta[:, None]
         loglikelihood = 0.5*(masked_delta.mT @ invSigma @ masked_delta + Npix * log2pi + logDet)
-        partialSigma = 0.5*(invSigma-invSigma@masked_delta@masked_delta.T@invSigma)
+        partialSigma = 0.5*(invSigma-invSigma@masked_delta@masked_delta.mT@invSigma)
         partialF = 2*diagA@partialSigma@diagA@F
         diagPartialSigma = torch.diag(partialSigma)
         partialPsi = A*diagPartialSigma*A
@@ -172,11 +172,12 @@ class QFA(object):
         diag = Psi + omega + masked_error*masked_error
         invSigma = MatrixInverse(F, diag, self.device)
         logDet = MatrixLogDet(F, diag, self.device)
-        loglikelihood = 0.5*(masked_delta.T @ invSigma @ masked_delta + Npix * log2pi + logDet)
+        masked_delta = masked_delta[:, None]
+        loglikelihood = 0.5*(masked_delta.mT @ invSigma @ masked_delta + Npix * log2pi + logDet)
         Sigma_e = torch.diag(1./diag)
         hcov = torch.linalg.inv(torch.eye(self.Nh, dtype=torch.float).to(self.device) + F.T@Sigma_e@F)
         hmean = hcov@F.T@Sigma_e@masked_delta
-        return loglikelihood, hmean, hcov, self.F@hmean + self.mu, torch.diag(self.F@hcov@self.F.T)**0.5
+        return loglikelihood, hmean, hcov, (self.F@hmean).squeeze() + self.mu, torch.diag(self.F@hcov@self.F.T)**0.5
 
 
     def train(self, optimizer, dataloader, n_epochs, output_dir="./result", save_interval=5, smooth_interval=5, quiet=False, logger=None):

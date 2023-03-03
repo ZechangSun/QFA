@@ -134,6 +134,13 @@ def _tau_kamble(z: torch.Tensor)->torch.Tensor:
     return tau0 * (1+z) ** beta
 
 
+def _tau_mock(z: torch.Tensor)->torch.Tensor:
+    """
+    mean optical depth from mock literature, Bautista et al. 2015 [https://iopscience.iop.org/article/10.1088/1475-7516/2015/05/060]
+    """
+    return 0.2231435513142097*((1+z)/3.25)**3.2
+
+
 def tau(z: torch.Tensor, which: Optional[str]='becker') -> torch.Tensor:
     """
     mean optical depth function
@@ -150,6 +157,8 @@ def tau(z: torch.Tensor, which: Optional[str]='becker') -> torch.Tensor:
         return _tau_fg(z)
     elif which == 'kamble':
         return _tau_kamble(z)
+    elif which == 'mock':
+        return _tau_mock(z)
     else:
         raise NotImplementedError("currently available mean optical depth function: ['becker', 'fg', 'kamble']")
 
