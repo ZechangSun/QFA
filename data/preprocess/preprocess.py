@@ -5,7 +5,8 @@ from astropy.stats import sigma_clip
 from scipy.optimize import curve_fit
 import json
 
-wlh = json.load(open('wavelength.json'))
+# read the frequently-used wavelength
+wlh = json.load(open('wavelength.json', 'r'))
 
 def get_spilt_point(data:DesiMock, id):
     '''
@@ -48,6 +49,37 @@ def get_between(array, max, min, maxif=False, minif=False):
             raise ValueError('min~max out of range')
     else:
         raise ValueError('max < min, will return nothing')
+    
+def W(N):
+    '''
+    Calculate the equivalent width W of DLA.
+    
+    ------
+    
+    ### Parameters:
+    `N`: the column density of the DLA. (in the form of 10^x)
+    '''
+    return 10**(0.5*(N-24.440751700479186))
+
+
+def wing_correction(z_dla, nhi_dla, wav, dla_indicator):
+    '''
+    Correct the wing of the DLA absorption.
+    
+    -----
+    
+    ### Parameters:
+    `z_dla`: the redshift of the DLA.
+    `nhi_dla`: the column density of the DLA. (in the form of 10^x)
+    `wav`: the observed wavelength of the sightline.
+    `dla_indicator`(Bool array): the indicator along the wavelenght axis. It is `True` if there is a DLA at this wavelength, and `False` if not.
+    '''
+    w = W(nhi_dla)
+    wav_dla = wav/(1+z_dla)
+    dwav = wav/(1+z_dla) - 1215.67
+    correction = np.exp(w**2 / (4*np.pi) * (wav_dla * dla_indicator / dwav)**2)
+    correction[np.isnan(correction)] = 0.
+    return correction
 
 def overlap(sightline, data:DesiMock, id):
     '''
@@ -238,3 +270,33 @@ def rebin(sightline, loglam_start, dlnlambda, max_index:int=int(1e6)):
     sightline.loglam_rebin_restframe = np.log10(new_wavelength[left:right])
     sightline.flux_rebin_restframe = new_fx[left:right]
     sightline.error_rebin_restframe = new_var[left:right]
+    
+def mask_dla(sightline):
+    '''
+    Mask the DLA region.
+    
+    ----
+    
+    ### Parameters:
+    `sightline`: the spectra that is waiting to be masked. It must have been rebinned by `rebin()`.
+    '''
+    interp_flux = sightline.flux_rebin_restframe
+    interp_error = sightline.error_rebin_restframe
+    lamda = 10**sightline.loglam_rebin_restframe
+    z = sightline.z_qso
+    dla_indicator = np.ones_like(interp_flux, dtype=bool)
+    dla_correction = np.ones_like(interp_flux)
+    if len(sightline.dlas) > 0:
+        for dla in sightline.dlas:
+            z_dla = (dla.central_wavelength / wlh['LyALPHA']) - 1
+            nhi = dla.col_density
+            w = W(nhi)
+            dla_indicator *= ~((lamda*(1+z) < 1215.67 * (1+z_dla) * (1.+w) ) & (lamda*(1+z)>1215.67*(1+z_dla)*(1.-w)))
+            dla_correction *= wing_correction(z_dla, nhi, lamda*(1+z), dla_indicator)
+        sightline.loglam_mask = sightline.loglam_rebin_restframe[dla_indicator]
+        sightline.flux_mask = interp_flux[dla_indicator] * dla_correction[dla_indicator]
+        sightline.error_mask = interp_error[dla_indicator] * dla_correction[dla_indicator]
+    else:
+        sightline.loglam_mask = sightline.loglam_rebin_restframe
+        sightline.flux_mask = interp_flux
+        sightline.error_mask = interp_error
