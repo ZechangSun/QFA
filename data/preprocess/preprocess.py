@@ -3,6 +3,8 @@ import numpy as np
 from scipy.interpolate import interp1d
 from astropy.stats import sigma_clip
 from scipy.optimize import curve_fit
+from astropy import cosmology
+from astropy import units as u
 import json
 
 # read the frequently-used wavelength
@@ -323,3 +325,20 @@ def mask_dla(sightline):
         sightline.loglam_mask = sightline.loglam_rebin_restframe
         sightline.flux_mask = interp_flux
         sightline.error_mask = interp_error
+
+def get_bolometric_lum(sightline, norm_factor):
+    '''
+    Get the bolometric luminosity of the sightline.
+    
+    -----
+    
+    ### Parameters:
+    `sightline`: the spectra that is going to be calculated.
+    `norm_factor`: the normalization factor of the spectra. Come from `normalize()`.
+    '''
+    universe = cosmology.LambdaCDM(H0=70, Om0=0.28, Ode0=0.72)
+    z = sightline.z_qso
+    dL = universe.luminosity_distance(z=z)
+    L1280 = 4*np.pi*dL*dL*norm_factor*1e-17*u.erg/u.centimeter/u.centimeter/u.s/u.angstrom
+    lum = np.log10(((1280.*u.angstrom*(1.+z)*L1280).to(u.erg/u.s)).value)
+    return lum
