@@ -107,6 +107,29 @@ def overlap(sightline, data:DesiMock, id):
     sightline.flux = np.concatenate((flux_b, flux_r, flux_z))
     sightline.error = np.concatenate((error_b, error_r, error_z))
     
+def normalize(sightline, full_wavelength, full_flux):
+    """
+    Normalize this spectra using the lymann-forest part, using the median of the flux array with wavelength in rest frame between max(3800/(1+z_qso),1070) 
+    and 1170. Normalize the error array at the same time to maintain the s/n. And for those spectrum cannot be normalzied, this function will assert error, when encounter this case.
+    ---------------------------------------------------
+    parameters:
+    sightline: :class:`dla_cnn.data_model.sightline.Sightline` object, the spectrum to be normalized;(It must have been processed by `overlap()`)
+    full_wavelength: numpy.ndarray, the whole wavelength array of this sightline, since the sightline may not contain the blue channel,
+                we pass the wavelength array to this function
+    full_flux:numpy.ndarray,the whole flux wavelength array of this sightline, take it as a parameter to solve the same problem above.
+    """
+    # determine the blue limit and red limit of the slice we use to normalize this spectra, and when cannot find such a slice, this function will assert error
+    blue_limit = max(3800/(1+sightline.z_qso),1070)
+    red_limit = 1170
+    rest_wavelength = full_wavelength/(sightline.z_qso+1)
+    assert blue_limit <= red_limit,"No Lymann-alpha forest, Please check this spectra: %i"%sightline.id#when no lymann alpha forest exists, assert error.
+    #use the slice we chose above to normalize this spectra, normalize both flux and error array using the same factor to maintain the s/n.
+    good_pix = (rest_wavelength>=blue_limit)&(rest_wavelength<=red_limit)
+    norm_factor = np.median(full_flux[good_pix])
+    sightline.flux_norm = sightline.flux/norm_factor
+    # sightline.error = sightline.error / np.median(full_error[good_pix])
+    sightline.error_norm = sightline.error/norm_factor
+    return norm_factor      
         
 def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5):
     '''
@@ -115,7 +138,7 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5):
     ---
     
     ### Parameters
-    `sightline`: the spectra that is waiting to be rebinned. It must have been clipped by `clip()`.
+    `sightline`: the spectra that is waiting to be cliped. It must have been normalized by `normalize()`.
     `unit_default`: the default length of each bin that is used to conduct sigmaclip.
     `slope`: the critical value that decides whether a smaller bin will be applied. If the fit slope of current bin exceeds this value, a smaller bin will be used.
     `ratio`: how small the smaller bin will be compared with the default bin length.
@@ -123,8 +146,8 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5):
     '''
     
     wavs = 10**sightline.loglam
-    flux = sightline.flux
-    error = sightline.error
+    flux = sightline.flux_norm
+    error = sightline.error_norm
     zero_point = np.where(wavs / (1+sightline.z_qso) >= wlh['LyALPHA'])[0][0]
     sightline.points_num = len(wavs)
 
