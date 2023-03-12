@@ -222,7 +222,7 @@ def get_dloglambda(sightline):
     dloglambda = np.log10(max_wavelength/min_wavelength)/pixels_number
     return dloglambda
     
-def rebin(sightline, loglam_start, dloglambda, max_index:int=int(1e6)):
+def rebin(sightline, loglam_start, dloglambda, max_index_up:int=int(1e6), max_index_down:int=int(1e6)):
     '''
     Rebin to the same restframe grid.
     
@@ -230,9 +230,9 @@ def rebin(sightline, loglam_start, dloglambda, max_index:int=int(1e6)):
 
     ### Parameters:
     `sightline`: the spectra that is waiting to be rebinned. It must have been clipped by `clip()`.
-    `loglam_start`: the start point of this restframe grid. Usually it is the start RESTFRAME wavelength of the spectra whose redshift is the largest.
-    `dlnlambda`: the step length of this restframe grid. It can be derived with `get_dlnlambda()`.
-    `max_index`: because different spectra has different range of wavelength in restframe, so it is necessary to make the restframe grid large enough to contain all of these spectrum. This parameter is the size of this grid, which is usually very big. You can change the default value if you think it is too big.
+    `loglam_start`: the start point of this restframe grid. Notice that it is not the smallest wavelength in restframe. Instead it is the point where the grid starts to "grow". See the definition of `max_index_up` and `max_index_down` for more details.
+    `dloglambda`: the step length of this restframe grid. It can be derived with `get_dlnlambda()`.
+    `max_index_up` and `max_index_down`: because different spectra has different range of wavelength in restframe, so it is necessary to make the restframe grid large enough to contain all of these spectrum. These parameters determine the size of this grid, which are usually very big. `max_index_up` determines how long this restframe will grow rightwards, and `max_index_down` determines the leftwards. You can change the default value if you think it is too big.
     '''
     
     wavelength = 10**sightline.loglam_cliped / (1+sightline.z_qso)
@@ -241,7 +241,7 @@ def rebin(sightline, loglam_start, dloglambda, max_index:int=int(1e6)):
     
     max_wavelength = wavelength[-1]
     min_wavelength = wavelength[0]
-    new_wavelength_total = 10**loglam_start * 10**(dloglambda * np.arange(max_index))
+    new_wavelength_total = 10**loglam_start * 10**(dloglambda * np.union1d(np.arange(max_index_up), -np.arange(max_index_down)))
     indices = get_between(new_wavelength_total, max_wavelength, min_wavelength, maxif=True, minif=True)
     new_wavelength = new_wavelength_total[indices]
     
