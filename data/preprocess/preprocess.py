@@ -206,7 +206,7 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5):
     sightline.flux_cliped = flux_new
     sightline.error_cliped = error_new
     
-def get_dlnlambda(sightline):
+def get_dloglambda(sightline):
     '''
     Generate the step length of restframe grid used in `rebin()`.
     
@@ -219,10 +219,10 @@ def get_dlnlambda(sightline):
     pixels_number = sightline.points_num
     max_wavelength = wavelength[-1]
     min_wavelength = wavelength[0]
-    dlnlambda = np.log(max_wavelength/min_wavelength)/pixels_number
-    return dlnlambda
+    dloglambda = np.log10(max_wavelength/min_wavelength)/pixels_number
+    return dloglambda
     
-def rebin(sightline, loglam_start, dlnlambda, max_index:int=int(1e6)):
+def rebin(sightline, loglam_start, dloglambda, max_index:int=int(1e6)):
     '''
     Rebin to the same restframe grid.
     
@@ -241,7 +241,7 @@ def rebin(sightline, loglam_start, dlnlambda, max_index:int=int(1e6)):
     
     max_wavelength = wavelength[-1]
     min_wavelength = wavelength[0]
-    new_wavelength_total = 10**loglam_start * np.exp(dlnlambda * np.arange(max_index))
+    new_wavelength_total = 10**loglam_start * 10**(dloglambda * np.arange(max_index))
     indices = get_between(new_wavelength_total, max_wavelength, min_wavelength, maxif=True, minif=True)
     new_wavelength = new_wavelength_total[indices]
     
