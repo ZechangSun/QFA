@@ -161,8 +161,8 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5):
     judge, start, end = True, zero_point, zero_point + unit
     while judge:
 
-        if end >= len(wavs):
-            end = len(wavs) - 1
+        if end > len(wavs):
+            end = len(wavs)
             judge = False
             if start == end:
                 break
