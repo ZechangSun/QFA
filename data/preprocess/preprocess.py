@@ -133,7 +133,7 @@ def normalize(sightline, full_wavelength, full_flux):
     sightline.error_norm = sightline.error/norm_factor
     return norm_factor      
         
-def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5):
+def clip(sightline, Nsigma_flat=3, Nsigma_steep=3, unit_default=100, slope=2e-3, ratio=0.5):
     '''
     Clip the abnormal points in the spectra.
     
@@ -144,7 +144,7 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5):
     `unit_default`: the default length of each bin that is used to conduct sigmaclip.
     `slope`: the critical value that decides whether a smaller bin will be applied. If the fit slope of current bin exceeds this value, a smaller bin will be used.
     `ratio`: how small the smaller bin will be compared with the default bin length.
-    `plot`: if true, this function can generate a plot that shows every bin's clipping upper and lower limit as well as the original spectrum that has not been clipped, which can clearly show which points are clipped. Ofter used in jupyter notebook. 
+    `Nsigma_flat` and `Nsigma_steep`: the critical value in different areas that decides whether a point is abnormal. If the point is abnormal, it will be clipped.
     '''
     
     wavs = 10**sightline.loglam
@@ -166,6 +166,8 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5):
             judge = False
             if start == end:
                 break
+        else:
+            judge = True
         subwavs, subflux, suberror = wavs[start:end], flux[start:end], error[start:end]
         if end - start >= 3:
             slope_fit = curve_fit(lambda t,a,b: a*t+b, subwavs, subflux)[0][0]
@@ -174,20 +176,24 @@ def clip(sightline, unit_default=100, slope=2e-3, ratio=0.5):
                 unit = int(unit_default*ratio)
                 end = start + unit
                 if end >= len(wavs):
-                    end = len(wavs) - 1
+                    end = len(wavs)
                     judge = False
                     if start == end:
                         break
+                else:
+                    judge = True
                 subwavs, subflux, suberror = wavs[start:end], flux[start:end], error[start:end]
 
             elif np.abs(slope_fit) < slope and unit != unit_default:
                 unit = unit_default
                 end = start + unit
                 if end >= len(wavs):
-                    end = len(wavs) - 1
+                    end = len(wavs)
                     judge = False
                     if start == end:
                         break
+                else:
+                    judge = True
                 subwavs, subflux, suberror = wavs[start:end], flux[start:end], error[start:end]
 
             mask = np.invert(sigma_clip(subflux, sigma=3).mask)
