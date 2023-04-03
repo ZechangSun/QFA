@@ -108,7 +108,7 @@ class Dataloader(object):
         self.data_size = self.flux.shape[0]
         
         s = np.hstack((np.exp(1*self._tau(self.zabs)), np.ones((self.data_size, self.Nr), dtype=float)))
-        self._mu = np.sum(self.flux*s, axis=0)/np.sum(self.flux!=0., axis=0)
+        self._mu = np.sum(self.flux*s*self.mask, axis=0)/np.sum(self.flux!=-999., axis=0)
         self._mu = smooth(self._mu, window_len=config.TRAIN.WINDOW_LENGTH_FOR_MU)
 
     def have_next_batch(self):
