@@ -2,7 +2,7 @@
 
 **An Unsupervised and Probabilistic Quasar Continuum  Prediction Algorithm with Latent Factor Analysis**
 
-https://img.shields.io/github/license/zechangsun/QFA
+![](https://img.shields.io/github/license/zechangsun/QFA)
 
 
 Welcome! This is the source code for *Quasar Factor Analysis*. 😉
