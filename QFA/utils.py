@@ -140,25 +140,33 @@ def _tau_mock(z: torch.Tensor)->torch.Tensor:
     """
     return 0.2231435513142097*((1+z)/3.25)**3.2
 
+# calculate the coefficients of optical depth for each Lyman series line [https://arxiv.org/abs/2003.11036 Eq17]
+lyseries = np.genfromtxt('./Lyman_series.csv', delimiter=',', names=True, 
+                         dtype=[('name', 'U10'), ('f', 'f8'), ('lambda', 'f8'), ('coeff', 'f8')])
+lya_coeff = lyseries[0]['lambda'] * lyseries[0]['f']
+lyseries['coeff'] = lyseries['lambda'] * lyseries['f'] / lya_coeff
 
-def tau(z: torch.Tensor, which: Optional[str]='becker') -> torch.Tensor:
+def tau(z: torch.Tensor, which: Optional[str]='becker', series: Optional[int]=1) -> torch.Tensor:
     """
     mean optical depth function
     ---------------------------------------------------
     Args:
         z (torch.Tensor (shape=(N, ), dtype=torch.float32)): redshift array
         which (str): which measurement to use ["becker", 'fg', 'kamble']
+        series (int): the Lyman series line to be calculated. e.g. 1=alpha, 2=beta, 3=gamma, ... (up to 30)
     Returns:
         effective optical depth: (torch.Tensor (shape=(N, ), dtype=torch.float32))
     """
+    coeff = lyseries[series-1]['coeff']
+
     if which == 'becker':
-        return _tau_becker(z)
+        return _tau_becker(z) * coeff
     elif which == 'fg':
-        return _tau_fg(z)
+        return _tau_fg(z) * coeff
     elif which == 'kamble':
-        return _tau_kamble(z)
+        return _tau_kamble(z) * coeff
     elif which == 'mock':
-        return _tau_mock(z)
+        return _tau_mock(z) * coeff
     else:
         raise NotImplementedError("currently available mean optical depth function: ['becker', 'fg', 'kamble']")
 
