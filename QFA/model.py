@@ -11,12 +11,14 @@ import time
 import os
 import numpy as np
 from .utils import MatrixInverse, MatrixLogDet, tauHI, omega_func
-from .utils import tau as default_tau
+from .utils import tau as taufunc
+from functools import partial
 
 from torch.nn import functional as F
 
 
 log2pi = 1.8378770664093453
+default_tau = partial(taufunc, which='becker')
 
 
 class QFA(object):
@@ -129,9 +131,9 @@ class QFA(object):
         diag = Psi + omega + masked_error*masked_error
         invSigma = MatrixInverse(F, diag, self.device)
         logDet = MatrixLogDet(F, diag, self.device)
-        loglikelihood = 0.5*(masked_delta.T @ invSigma @ masked_delta + Npix * log2pi + logDet)
-        masked_delta = masked_delta.reshape((-1, 1))
-        partialSigma = 0.5*(invSigma-invSigma@masked_delta@masked_delta.T@invSigma)
+        masked_delta = masked_delta[:, None]
+        loglikelihood = 0.5*(masked_delta.mT @ invSigma @ masked_delta + Npix * log2pi + logDet)
+        partialSigma = 0.5*(invSigma-invSigma@masked_delta@masked_delta.mT@invSigma)
         partialF = 2*diagA@partialSigma@diagA@F
         diagPartialSigma = torch.diag(partialSigma)
         partialPsi = A*diagPartialSigma*A
@@ -170,11 +172,12 @@ class QFA(object):
         diag = Psi + omega + masked_error*masked_error
         invSigma = MatrixInverse(F, diag, self.device)
         logDet = MatrixLogDet(F, diag, self.device)
-        loglikelihood = 0.5*(masked_delta.T @ invSigma @ masked_delta + Npix * log2pi + logDet)
+        masked_delta = masked_delta[:, None]
+        loglikelihood = 0.5*(masked_delta.mT @ invSigma @ masked_delta + Npix * log2pi + logDet)
         Sigma_e = torch.diag(1./diag)
         hcov = torch.linalg.inv(torch.eye(self.Nh, dtype=torch.float).to(self.device) + F.T@Sigma_e@F)
         hmean = hcov@F.T@Sigma_e@masked_delta
-        return loglikelihood, hmean, hcov, self.F@hmean + self.mu, torch.diag(self.F@hcov@self.F.T)**0.5
+        return loglikelihood, hmean, hcov, (self.F@hmean).squeeze() + self.mu, torch.diag(self.F@hcov@self.F.T)**0.5
 
 
     def train(self, optimizer, dataloader, n_epochs, output_dir="./result", save_interval=5, smooth_interval=5, quiet=False, logger=None):
@@ -193,6 +196,9 @@ class QFA(object):
         Returns:
             None
         """
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
+        output_dir = os.path.join(output_dir, 'checkpoints')
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
         self.mu = torch.tensor(dataloader.mu, dtype=torch.float32).to(self.device)
