@@ -6,7 +6,7 @@ import warnings
 from tqdm import tqdm
 import multiprocessing
 from .utils import smooth
-from .utils import tau as taufunc
+from .utils import tau_total as taufunc
 from typing import Tuple, Callable, List
 from functools import partial
 from yacs.config import CfgNode as CN
@@ -107,7 +107,7 @@ class Dataloader(object):
         self._tau = partial(taufunc, which=config.MODEL.TAU)
         self.data_size = self.flux.shape[0]
         
-        s = np.hstack((np.exp(1*self._tau(self.zabs)), np.ones((self.data_size, self.Nr), dtype=float)))
+        s = np.hstack((np.exp(1*self._tau(self.wav_grid, self.zqso)), np.ones((self.data_size, self.Nr), dtype=float)))
         self._mu = np.sum(self.flux*s*self.mask, axis=0)/np.sum(self.flux!=-999., axis=0)
         self._mu = smooth(self._mu, window_len=config.TRAIN.WINDOW_LENGTH_FOR_MU)
 
@@ -132,7 +132,7 @@ class Dataloader(object):
         start = self.cur
         end = self.cur + self.batch_size if self.cur + self.batch_size < self.data_size else self.data_size
         self.cur = end
-        s = np.hstack((np.exp(-1*self._tau(self.zabs[start: end])), np.ones((-start+end, self.Nr), dtype=float)))
+        s = np.hstack((np.exp(-1*self._tau(self.wav_grid, self.zqso[start: end])), np.ones((-start+end, self.Nr), dtype=float)))
         return torch.tensor(self.flux[start: end]-self._mu*s, dtype=torch.float32).to(self._device),\
             torch.tensor(self.error[start: end], dtype=torch.float32).to(self._device), torch.tensor(self.zabs[start: end], dtype=torch.float32).to(self._device), \
                 torch.tensor(self.mask[start: end], dtype=bool).to(self._device)
@@ -146,7 +146,7 @@ class Dataloader(object):
         """
         if self.type == 'test': warnings.warn('dataloader is in test mode...')
         sig = np.random.randint(0, self.data_size, size=(self.batch_size, ))
-        s = np.hstack((np.exp(-1.*self._tau(self.zabs[sig])), np.ones((self.batch_size, self.Nr), dtype=float)))
+        s = np.hstack((np.exp(-1.*self._tau(self.wav_grid, self.zqso[sig])), np.ones((self.batch_size, self.Nr), dtype=float)))
         return torch.tensor(self.flux[sig]-self._mu*s, dtype=torch.tensor32).to(self._device),\
             torch.tensor(self.error[sig], dtype=torch.float32).to(self._device), torch.tensor(self.zabs[sig], dtype=torch.float32).to(self._device), \
                 torch.tensor(self.mask[sig], dtype=bool).to(self._device)
